@@ -38,7 +38,7 @@ function parseRegistry(text) {
 
 app.get('/api/registry', async (req, res) => {
   try {
-    const response = await axios.get(IANA_URL);
+    const response = await axios.get(IANA_URL, { family: 4 });
     const data = parseRegistry(response.data);
     res.json(data);
   } catch (error) {
@@ -49,7 +49,7 @@ app.get('/api/registry', async (req, res) => {
 
 app.get('/api/registry/language', async (req, res) => {
   try {
-    const response = await axios.get(IANA_URL);
+    const response = await axios.get(IANA_URL, { family: 4 });
     const data = parseRegistry(response.data);
     const languageData = data.filter(obj => obj['Type'] === 'language');
     res.json(languageData);
