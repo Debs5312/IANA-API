@@ -1,8 +1,53 @@
 const express = require('express');
 const axios = require('axios');
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: 'info',
+  transports: [
+    new winston.transports.File({
+      filename: 'logs/info.log',
+      level: 'info',
+      format: winston.format.combine(
+        winston.format((info) => {
+          if (info.level === 'error') return false;
+          return info;
+        })(),
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.simple()
+      )
+    }),
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.simple()
+      )
+    }),
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.simple()
+      )
+    })
+  ]
+});
 
 const app = express();
 app.use(express.json());
+
+// Middleware to restrict to only allowed endpoints
+app.use((req, res, next) => {
+  const allowedPaths = ['/api/registry', '/api/registry/language'];
+  const path = req.path.replace(/\/$/, ''); // Remove trailing slash
+  if (allowedPaths.includes(path)) {
+    next();
+  } else {
+    logger.error(`Invalid request: ${req.method} ${req.path}`);
+    res.status(404).json({ error: 'Endpoint not found' });
+  }
+});
 
 const IANA_URL = 'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry';
 
@@ -37,24 +82,26 @@ function parseRegistry(text) {
 }
 
 app.get('/api/registry', async (req, res) => {
+  logger.info(`Request received: ${req.method} ${req.path}`);
   try {
     const response = await axios.get(IANA_URL, { family: 4 });
     const data = parseRegistry(response.data);
     res.json(data);
   } catch (error) {
-    console.error('Error fetching or parsing registry:', error);
+    logger.error('Error fetching or parsing registry:', error);
     res.status(500).json({ error: 'Failed to fetch or parse the language subtag registry' });
   }
 });
 
 app.get('/api/registry/language', async (req, res) => {
+  logger.info(`Request received: ${req.method} ${req.path}`);
   try {
     const response = await axios.get(IANA_URL, { family: 4 });
     const data = parseRegistry(response.data);
-    const languageData = data.filter(obj => obj['Type'] === 'language');
+    const languageData = data.filter(obj => obj['Type'] === 'language').map(obj => ({ Subtag: obj.Subtag, Description: obj.Description }));
     res.json(languageData);
   } catch (error) {
-    console.error('Error fetching or parsing language registry:', error);
+    logger.error('Error fetching or parsing language registry:', error);
     res.status(500).json({ error: 'Failed to fetch or parse the language subtag registry' });
   }
 });
