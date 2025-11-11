@@ -1,8 +1,8 @@
 const { fetchRegistry, createConceptScheme } = require('../models/registryModel');
 const logger = require('../config/logger');
 
-async function getRegistry(req, res) {
-  logger.info(`Request received: ${req.method} ${req.path}`);
+async function getRegistry (req, res) {
+  logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
   try {
     const data = await fetchRegistry();
     res.json(data);
@@ -12,11 +12,16 @@ async function getRegistry(req, res) {
   }
 }
 
-async function getLanguageRegistry(req, res) {
-  logger.info(`Request received: ${req.method} ${req.path}`);
+async function getLanguageRegistry (req, res) {
+  logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
   try {
     const data = await fetchRegistry();
-    const languageData = data.filter(obj => obj['Type'] === 'language').map(obj => ({ Subtag: obj.Subtag, Description: obj.Description }));
+    const languageData = data
+      .filter(obj => obj.Type === 'language' && obj.Subtag)
+      .map(obj => ({
+        Subtag: obj.Subtag,
+        Description: obj.Description || 'No description available'
+      }));
     res.json(languageData);
   } catch (error) {
     logger.error('Error fetching or parsing language registry:', error);
@@ -24,8 +29,8 @@ async function getLanguageRegistry(req, res) {
   }
 }
 
-async function createConceptSchemeHandler(req, res) {
-  logger.info(`Request received: ${req.method} ${req.path}`);
+async function createConceptSchemeHandler (req, res) {
+  logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
   try {
     const data = await createConceptScheme();
     res.json({ success: true, data });

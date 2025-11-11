@@ -2,10 +2,12 @@ const axios = require('axios');
 const querystring = require('querystring');
 const logger = require('../config/logger');
 
-const IANA_URL = 'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry';
-const POOLPARTY_URL = 'https://atticusdata02.uk.oup.com/PoolParty/api/thesaurus/ccfbf9ad-c84f-41b0-95a6-df11a545ea08/createConceptScheme';
+const IANA_URL = process.env.IANA_URL;
+const POOLPARTY_URL = process.env.POOLPARTY_URL;
+const POOLPARTY_USERNAME = process.env.POOLPARTY_USERNAME;
+const POOLPARTY_PASSWORD = process.env.POOLPARTY_PASSWORD;
 
-function parseRegistry(text) {
+function parseRegistry (text) {
   const lines = text.split('\n');
   const result = [];
   let current = {};
@@ -35,45 +37,57 @@ function parseRegistry(text) {
   return result;
 }
 
-async function fetchRegistry() {
-  const response = await axios.get(IANA_URL, { family: 4 });
-  return parseRegistry(response.data);
+async function fetchRegistry () {
+  try {
+    const response = await axios.get(IANA_URL, { family: 4 });
+    logger.info('Fetched IANA registry successfully');
+    return parseRegistry(response.data);
+  } catch (error) {
+    logger.error('Error fetching IANA registry:', error);
+    throw error;
+  }
 }
 
-async function createConceptScheme() {
-  // Fetch language data from the local API
-  const languageResponse = await axios.get('http://localhost:5500/api/registry/language');
-  const languages = languageResponse.data;
-  const results = [];
-  for (const language of languages) {
-    const title = language.Subtag;
-    const description = language.Description;
+async function createConceptScheme () {
+  try {
+    // Fetch and filter languages directly to avoid self-reference
+    const allData = await fetchRegistry();
+    const languages = allData
+      .filter(obj => obj.Type === 'language')
+      .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || '' }))
+      .filter(lang => lang.Subtag && lang.Description); // Ensure required fields
+    const results = [];
+    for (const language of languages) {
+      const title = language.Subtag;
+      const description = language.Description;
 
-    const data = querystring.stringify({
-      title: title,
-      description: description,
-      creator: 'superadmin'
-    });
+      const data = querystring.stringify({
+        title,
+        description,
+        creator: 'superadmin'
+      });
 
-    const username = 'abcd';
-    const password = 'xxxxx';
-    const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+      const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
 
-    const response = await axios.post(POOLPARTY_URL, data, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': authHeader
+      const response = await axios.post(POOLPARTY_URL, data, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: authHeader
+        }
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`POST failed for ${title}: ${response.status}`);
       }
-    });
 
-    if (response.status !== 200) {
-      throw new Error(`POST failed for ${title}: ${response.status}`);
+      logger.info(`POST successful for ${title}: ${response.status}`);
+      results.push(response.data);
     }
-
-    logger.info(`POST successful for ${title}: ${response.status}`, { filename: 'logs/response.log' });
-    results.push(response.data);
+    return results;
+  } catch (error) {
+    logger.error('Error in createConceptScheme:', error);
+    throw error;
   }
-  return results;
 }
 
 module.exports = {

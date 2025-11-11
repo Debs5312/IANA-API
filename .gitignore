@@ -62,6 +62,10 @@ typings/
 .env.test
 .env.local
 
+# Application logs
+logs/
+logs/*.log
+
 # parcel-bundler cache
 .cache
 .parcel-cache
