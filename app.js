@@ -7,7 +7,7 @@ app.use(express.json());
 
 // Middleware to restrict to only allowed endpoints
 app.use((req, res, next) => {
-  const allowedPaths = ['/api/registry', '/api/registry/language'];
+  const allowedPaths = ['/api/registry', '/api/registry/language', '/api/createConceptScheme'];
   const path = req.path.replace(/\/$/, ''); // Remove trailing slash
   if (allowedPaths.includes(path)) {
     next();

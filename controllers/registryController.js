@@ -1,4 +1,4 @@
-const { fetchRegistry } = require('../models/registryModel');
+const { fetchRegistry, createConceptScheme } = require('../models/registryModel');
 const logger = require('../config/logger');
 
 async function getRegistry(req, res) {
@@ -24,7 +24,19 @@ async function getLanguageRegistry(req, res) {
   }
 }
 
+async function createConceptSchemeHandler(req, res) {
+  logger.info(`Request received: ${req.method} ${req.path}`);
+  try {
+    const data = await createConceptScheme();
+    res.json({ success: true, data });
+  } catch (error) {
+    logger.error('Error creating concept scheme:', error);
+    res.status(500).json({ error: 'Failed to create concept scheme' });
+  }
+}
+
 module.exports = {
   getRegistry,
-  getLanguageRegistry
+  getLanguageRegistry,
+  createConceptSchemeHandler
 };
