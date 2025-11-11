@@ -1,6 +1,6 @@
 const axios = require('axios');
 const querystring = require('querystring');
-const logger = require('../config/logger');
+const { logger, responseLogger } = require('../config/logger');
 
 const IANA_URL = process.env.IANA_URL;
 const POOLPARTY_URL = process.env.POOLPARTY_URL;
@@ -80,7 +80,7 @@ async function createConceptScheme () {
         throw new Error(`POST failed for ${title}: ${response.status}`);
       }
 
-      logger.info(`POST successful for ${title}: ${response.status}`);
+      responseLogger.info(`POST successful for ${title}: ${response.status}`);
       results.push(response.data);
     }
     return results;

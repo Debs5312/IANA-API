@@ -1,5 +1,5 @@
 const { fetchRegistry, createConceptScheme } = require('../models/registryModel');
-const logger = require('../config/logger');
+const { logger } = require('../config/logger');
 
 async function getRegistry (req, res) {
   logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);

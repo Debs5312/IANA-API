@@ -24,11 +24,21 @@ const logger = winston.createLogger({
       filename: path.join(logsDir, 'error.log'),
       level: 'error'
     }),
+    new winston.transports.Console()
+  ]
+});
+
+const responseLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.simple()
+  ),
+  transports: [
     new winston.transports.File({
       filename: path.join(logsDir, 'response.log'),
       level: 'info'
-    }),
-    new winston.transports.Console()
+    })
   ]
 });
 
@@ -39,4 +49,4 @@ logger.stream = {
   }
 };
 
-module.exports = logger;
+module.exports = { logger, responseLogger };
