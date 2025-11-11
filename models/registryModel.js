@@ -52,14 +52,17 @@ async function createConceptScheme() {
     const data = querystring.stringify({
       title: title,
       description: description,
-      creator: 'superadmin',
-      Username: 'abcd',
-      Password: 'xxxxx'
+      creator: 'superadmin'
     });
+
+    const username = 'abcd';
+    const password = 'xxxxx';
+    const authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
 
     const response = await axios.post(POOLPARTY_URL, data, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': authHeader
       }
     });
 
