@@ -1,0 +1,30 @@
+const { fetchRegistry } = require('../models/registryModel');
+const logger = require('../config/logger');
+
+async function getRegistry(req, res) {
+  logger.info(`Request received: ${req.method} ${req.path}`);
+  try {
+    const data = await fetchRegistry();
+    res.json(data);
+  } catch (error) {
+    logger.error('Error fetching or parsing registry:', error);
+    res.status(500).json({ error: 'Failed to fetch or parse the language subtag registry' });
+  }
+}
+
+async function getLanguageRegistry(req, res) {
+  logger.info(`Request received: ${req.method} ${req.path}`);
+  try {
+    const data = await fetchRegistry();
+    const languageData = data.filter(obj => obj['Type'] === 'language').map(obj => ({ Subtag: obj.Subtag, Description: obj.Description }));
+    res.json(languageData);
+  } catch (error) {
+    logger.error('Error fetching or parsing language registry:', error);
+    res.status(500).json({ error: 'Failed to fetch or parse the language subtag registry' });
+  }
+}
+
+module.exports = {
+  getRegistry,
+  getLanguageRegistry
+};

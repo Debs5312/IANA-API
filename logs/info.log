@@ -1,0 +1,5 @@
+info: Request received: GET /api/registry/language/ {"timestamp":"2025-11-05 20:02:43"}
+info: Request received: GET /api/registry/language/ {"timestamp":"2025-11-05 20:02:46"}
+info: Request received: GET /api/registry/language {"timestamp":"2025-11-11 15:19:55"}
+info: Request received: GET /registry/language {"timestamp":"2025-11-11 18:02:11"}
+info: Request received: GET /registry/ {"timestamp":"2025-11-11 18:02:25"}
