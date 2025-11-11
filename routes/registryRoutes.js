@@ -5,6 +5,6 @@ const router = express.Router();
 
 router.get('/registry', getRegistry);
 router.get('/registry/language', getLanguageRegistry);
-router.post('/createConceptScheme', createConceptSchemeHandler);
+router.get('/createConceptScheme', createConceptSchemeHandler);
 
 module.exports = router;

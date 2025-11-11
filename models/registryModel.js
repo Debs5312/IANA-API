@@ -57,7 +57,7 @@ async function createConceptScheme () {
       .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || '' }))
       .filter(lang => lang.Subtag && lang.Description); // Ensure required fields
     const results = [];
-    for (const language of languages) {
+    for (const language of languages.slice(0, 5)) {
       const title = language.Subtag;
       const description = language.Description;
 
