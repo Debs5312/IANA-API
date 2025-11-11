@@ -65,6 +65,8 @@ typings/
 # Application logs
 logs/
 logs/*.log
+info.log
+error.log
 
 # parcel-bundler cache
 .cache
