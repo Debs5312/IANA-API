@@ -23,6 +23,14 @@ const logger = winston.createLogger({
         winston.format.simple()
       )
     }),
+    new winston.transports.File({
+      filename: 'logs/response.log',
+      level: 'info',
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.simple()
+      )
+    }),
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),

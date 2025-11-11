@@ -1,5 +1,6 @@
 const axios = require('axios');
 const querystring = require('querystring');
+const logger = require('../config/logger');
 
 const IANA_URL = 'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry';
 const POOLPARTY_URL = 'https://atticusdata02.uk.oup.com/PoolParty/api/thesaurus/ccfbf9ad-c84f-41b0-95a6-df11a545ea08/createConceptScheme';
@@ -43,25 +44,33 @@ async function createConceptScheme() {
   // Fetch language data from the local API
   const languageResponse = await axios.get('http://localhost:5500/api/registry/language');
   const languages = languageResponse.data;
-  const firstLanguage = languages[0];
-  const title = firstLanguage.Subtag;
-  const description = firstLanguage.Description;
+  const results = [];
+  for (const language of languages) {
+    const title = language.Subtag;
+    const description = language.Description;
 
-  const data = querystring.stringify({
-    title: title,
-    description: description,
-    creator: 'superadmin',
-    Username: 'abcd',
-    Password: 'xxxxx'
-  });
+    const data = querystring.stringify({
+      title: title,
+      description: description,
+      creator: 'superadmin',
+      Username: 'abcd',
+      Password: 'xxxxx'
+    });
 
-  const response = await axios.post(POOLPARTY_URL, data, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
+    const response = await axios.post(POOLPARTY_URL, data, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    if (response.status !== 200) {
+      throw new Error(`POST failed for ${title}: ${response.status}`);
     }
-  });
 
-  return response.data;
+    logger.info(`POST successful for ${title}: ${response.status}`, { filename: 'logs/response.log' });
+    results.push(response.data);
+  }
+  return results;
 }
 
 module.exports = {
