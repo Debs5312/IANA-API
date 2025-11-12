@@ -30,7 +30,7 @@ async function getLanguageRegistry (req, res) {
 }
 
 async function createConceptSchemeHandler (req, res) {
-  logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
+  logger.info(`Request received: POST ${req.path} from ${req.ip}`);
   try {
     const data = await createConceptScheme();
     res.json({ success: true, data });
