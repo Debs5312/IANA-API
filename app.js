@@ -3,10 +3,14 @@ const express = require('express');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const cors = require('cors');
 const { logger } = require('./config/logger');
 const registryRoutes = require('./routes/registryRoutes');
 
 const app = express();
+
+// CORS middleware
+app.use(cors());
 
 // Security middleware
 app.use(helmet());
