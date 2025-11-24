@@ -3,7 +3,7 @@ const querystring = require('querystring');
 const { logger, responseLogger } = require('../config/logger');
 
 const IANA_URL = process.env.IANA_URL;
-const POOLPARTY_URL = process.env.POOLPARTY_URL;
+const POOLPARTY_Base_URL = process.env.POOLPARTY_URL;
 const POOLPARTY_USERNAME = process.env.POOLPARTY_USERNAME;
 const POOLPARTY_PASSWORD = process.env.POOLPARTY_PASSWORD;
 
@@ -48,7 +48,7 @@ async function fetchRegistry () {
   }
 }
 
-async function createConceptScheme () {
+async function createConceptScheme (projectUUID, creator) {
   try {
     // Fetch and filter languages directly to avoid self-reference
     const allData = await fetchRegistry();
@@ -64,11 +64,11 @@ async function createConceptScheme () {
       const data = querystring.stringify({
         title,
         description,
-        creator: 'superadmin'
+        creator
       });
 
       const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-
+      const POOLPARTY_URL = `${POOLPARTY_Base_URL}/${projectUUID}/createConceptScheme`;
       const response = await axios.post(POOLPARTY_URL, data, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
