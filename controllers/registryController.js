@@ -72,8 +72,14 @@ async function deleteConceptHandler (req, res) {
     const data = await deleteConcepts(projectUUID, scheme);
     res.json({ success: true, data });
   } catch (error) {
-    logger.error('Error fetching concept:', error);
-    res.status(500).json({ error: 'Failed to fetch concept' });
+    if (error.message === 'No concepts found to delete') {
+      // Return 404 Not Found if no concepts are present
+      logger.info('No concepts found to delete for the given scheme');
+      res.status(404).json({ error: 'No concepts found to delete' });
+    } else {
+      logger.error('Error deleting concept:', error);
+      res.status(500).json({ error: 'Failed to delete concept' });
+    }
   }
 }
 

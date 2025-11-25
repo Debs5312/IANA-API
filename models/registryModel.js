@@ -160,6 +160,7 @@ async function deleteConcepts (projectUUID, scheme) {
     const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
     const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}`;
     const POOLPARTY_DELETE_URL = `${POOLPARTY_Base_URL}/${projectUUID}/deleteConcept`;
+    // Fetch the list of top concepts for the given scheme
     const response = await axios.get(POOLPARTY_GET_URL, {
       family: 4,
       headers: {
@@ -168,9 +169,15 @@ async function deleteConcepts (projectUUID, scheme) {
       }
     });
     let responseData = response.data;
-    if (typeof data === 'string') {
+    // Parse the response data if it's a string
+    if (typeof responseData === 'string') {
       responseData = JSON.parse(responseData);
     }
+    // Check if concepts are present; if not, throw an error to indicate 404
+    if (responseData.length === 0) {
+      throw new Error('No concepts found to delete');
+    }
+    // Proceed to delete each concept
     responseData.forEach(async element => {
       console.log(element.uri);
       const data = querystring.stringify({
