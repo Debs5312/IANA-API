@@ -80,8 +80,22 @@ async function createConcept (projectUUID, parent) {
   try {
     // Fetch and filter languages using the dedicated function
     const languages = await fetchRegistryFilterByLanguage();
+    const existingConcepts = await getTopConcepts(projectUUID, parent);
     const results = [];
-    for (const language of languages.slice(0, 5)) {
+    let languagesToCreate = languages;
+    if (existingConcepts.length > 0) {
+      // Match prefLabels with language Subtag and skip matching data
+      const existingPrefLabels = existingConcepts.map(concept => concept.prefLabel);
+      languagesToCreate = languages.filter(language => !existingPrefLabels.includes(language.Subtag));
+      logger.info(`Found ${existingConcepts.length} existing concepts. Proceeding with creation for ${languagesToCreate.length} remaining languages.`);
+    } else {
+      logger.info('No existing concepts found. Proceeding with concept creation.');
+    }
+    if (languagesToCreate.length === 0) {
+      logger.info('No new languages to create.');
+      return results;
+    }
+    for (const language of languagesToCreate.slice(0, 5)) {
       const prefLabel = language.Subtag;
       //const description = language.Description;
 
@@ -113,7 +127,7 @@ async function createConcept (projectUUID, parent) {
   }
 }
 
-async function fetchConcepts (projectUUID, scheme) {
+async function getTopConcepts (projectUUID, scheme) {
   try {
     const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
     const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}`;
@@ -137,33 +151,23 @@ async function fetchConcepts (projectUUID, scheme) {
   }
 }
 
+async function fetchConcepts (projectUUID, scheme) {
+  return await getTopConcepts(projectUUID, scheme);
+}
+
 async function deleteConcepts (projectUUID, scheme) {
   try {
-    const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-    const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}`;
-    const POOLPARTY_DELETE_URL = `${POOLPARTY_Base_URL}/${projectUUID}/deleteConcept`;
-    // Fetch the list of top concepts for the given scheme
-    const response = await axios.get(POOLPARTY_GET_URL, {
-      family: 4,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: authHeader
-      }
-    });
-    let responseData = response.data;
-    // Parse the response data if it's a string
-    if (typeof responseData === 'string') {
-      responseData = JSON.parse(responseData);
-    }
+    const responseData = await getTopConcepts(projectUUID, scheme);
     // Check if concepts are present; if not, throw an error to indicate 404
     if (responseData.length === 0) {
       throw new Error('No concepts found to delete');
     }
     // Proceed to delete each concept
-    responseData.forEach(async element => {
-      console.log(element.uri);
+    const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
+    const POOLPARTY_DELETE_URL = `${POOLPARTY_Base_URL}/${projectUUID}/deleteConcept`;
+    for (const element of responseData) {
       const data = querystring.stringify({
-        concept : element.uri
+        concept: element.uri
       });
       const response = await axios.post(POOLPARTY_DELETE_URL, data, {
         headers: {
@@ -175,7 +179,7 @@ async function deleteConcepts (projectUUID, scheme) {
         throw new Error(`DELETE failed for ${element.uri}: ${response.status}`);
       }
       responseLogger.info(`DELETE successful for ${element.uri}, ${element.prefLabel}: ${response.status}`);
-    });
+    }
     return responseData;
   } catch (error) {
     logger.error('Error in deleting Concept:', error);
