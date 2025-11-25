@@ -1,4 +1,4 @@
-const { fetchRegistry, createConceptScheme, createConcept, fetchConcepts, deleteConcepts } = require('../models/registryModel');
+const { fetchRegistry, fetchRegistryFilterByLanguage, createConcept, fetchConcepts, deleteConcepts } = require('../models/registryModel');
 const { logger } = require('../config/logger');
 
 async function getRegistry (req, res) {
@@ -15,31 +15,25 @@ async function getRegistry (req, res) {
 async function getLanguageRegistry (req, res) {
   logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
   try {
-    const data = await fetchRegistry();
-    const languageData = data
-      .filter(obj => obj.Type === 'language' && obj.Subtag)
-      .map(obj => ({
-        Subtag: obj.Subtag,
-        Description: obj.Description || 'No description available'
-      }));
-    res.json(languageData);
+    const data = await fetchRegistryFilterByLanguage();
+    res.json(data);
   } catch (error) {
     logger.error('Error fetching or parsing language registry:', error);
     res.status(500).json({ error: 'Failed to fetch or parse the language subtag registry' });
   }
 }
 
-async function createConceptSchemeHandler (req, res) {
-  logger.info(`Request received: POST ${req.path} from ${req.ip}`);
-  try {
-    const { projectUUID, creator } = req.body;
-    const data = await createConceptScheme(projectUUID, creator);
-    res.json({ success: true, data });
-  } catch (error) {
-    logger.error('Error creating concept scheme:', error);
-    res.status(500).json({ error: 'Failed to create concept scheme' });
-  }
-}
+// async function createConceptSchemeHandler (req, res) {
+//   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
+//   try {
+//     const { projectUUID, creator } = req.body;
+//     const data = await createConceptScheme(projectUUID, creator);
+//     res.json({ success: true, data });
+//   } catch (error) {
+//     logger.error('Error creating concept scheme:', error);
+//     res.status(500).json({ error: 'Failed to create concept scheme' });
+//   }
+// }
 
 async function createConceptHandler (req, res) {
   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
@@ -86,7 +80,7 @@ async function deleteConceptHandler (req, res) {
 module.exports = {
   getRegistry,
   getLanguageRegistry,
-  createConceptSchemeHandler,
+  // createConceptSchemeHandler,
   createConceptHandler,
   fetchConceptHandler,
   deleteConceptHandler
