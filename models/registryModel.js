@@ -90,8 +90,75 @@ async function createConceptScheme (projectUUID, creator) {
   }
 }
 
+async function createConcept (projectUUID, parent) {
+  try {
+    // Fetch and filter languages directly to avoid self-reference
+    const allData = await fetchRegistry();
+    const languages = allData
+      .filter(obj => obj.Type === 'language')
+      .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || '' }))
+      .filter(lang => lang.Subtag && lang.Description); // Ensure required fields
+    const results = [];
+    for (const language of languages.slice(0, 5)) {
+      const prefLabel = language.Subtag;
+      //const description = language.Description;
+
+      const data = querystring.stringify({
+        prefLabel,
+        parent
+      });
+
+      const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
+      const POOLPARTY_URL = `${POOLPARTY_Base_URL}/${projectUUID}/createConcept`;
+      const response = await axios.post(POOLPARTY_URL, data, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: authHeader
+        }
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`POST failed for ${prefLabel}: ${response.status}`);
+      }
+
+      responseLogger.info(`POST successful for ${prefLabel}: ${response.status}`);
+      results.push(response.data);
+    }
+    return results;
+  } catch (error) {
+    logger.error('Error in createConcept:', error);
+    throw error;
+  }
+}
+
+async function fetchConcepts (projectUUID, scheme) {
+  try {
+    const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
+    const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}`;
+
+    const response = await axios.get(POOLPARTY_GET_URL, {
+      family: 4,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: authHeader
+      }
+    });
+    logger.info('Fetched All Concepts from PoolParty successfully');
+    let data = response.data;
+    if (typeof data === 'string') {
+      data = JSON.parse(data);
+    }
+    return data;
+  } catch (error) {
+    logger.error('Error in fetching Concepts:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   fetchRegistry,
   parseRegistry,
-  createConceptScheme
+  createConceptScheme,
+  createConcept,
+  fetchConcepts
 };

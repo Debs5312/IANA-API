@@ -1,4 +1,4 @@
-const { fetchRegistry, createConceptScheme } = require('../models/registryModel');
+const { fetchRegistry, createConceptScheme, createConcept, fetchConcepts } = require('../models/registryModel');
 const { logger } = require('../config/logger');
 
 async function getRegistry (req, res) {
@@ -41,8 +41,34 @@ async function createConceptSchemeHandler (req, res) {
   }
 }
 
+async function createConceptHandler (req, res) {
+  logger.info(`Request received: POST ${req.path} from ${req.ip}`);
+  try {
+    const { projectUUID, parent } = req.body;
+    const data = await createConcept(projectUUID, parent);
+    res.json({ success: true, data });
+  } catch (error) {
+    logger.error('Error creating concept:', error);
+    res.status(500).json({ error: 'Failed to create concept' });
+  }
+}
+
+async function fetchConceptHandler (req, res) {
+  logger.info(`Request received: GET ${req.path} from ${req.ip}`);
+  try {
+    const { projectUUID, scheme } = req.query;
+    const data = await fetchConcepts(projectUUID, scheme);
+    res.json({ success: true, data });
+  } catch (error) {
+    logger.error('Error fetching concept:', error);
+    res.status(500).json({ error: 'Failed to fetch concept' });
+  }
+}
+
 module.exports = {
   getRegistry,
   getLanguageRegistry,
-  createConceptSchemeHandler
+  createConceptSchemeHandler,
+  createConceptHandler,
+  fetchConceptHandler
 };
