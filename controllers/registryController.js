@@ -1,4 +1,4 @@
-const { fetchRegistry, createConceptScheme, createConcept, fetchConcepts } = require('../models/registryModel');
+const { fetchRegistry, createConceptScheme, createConcept, fetchConcepts, deleteConcepts } = require('../models/registryModel');
 const { logger } = require('../config/logger');
 
 async function getRegistry (req, res) {
@@ -65,10 +65,23 @@ async function fetchConceptHandler (req, res) {
   }
 }
 
+async function deleteConceptHandler (req, res) {
+  logger.info(`Request received: DELETE ${req.path} from ${req.ip}`);
+  try {
+    const { projectUUID, scheme } = req.query;
+    const data = await deleteConcepts(projectUUID, scheme);
+    res.json({ success: true, data });
+  } catch (error) {
+    logger.error('Error fetching concept:', error);
+    res.status(500).json({ error: 'Failed to fetch concept' });
+  }
+}
+
 module.exports = {
   getRegistry,
   getLanguageRegistry,
   createConceptSchemeHandler,
   createConceptHandler,
-  fetchConceptHandler
+  fetchConceptHandler,
+  deleteConceptHandler
 };

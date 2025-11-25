@@ -155,10 +155,49 @@ async function fetchConcepts (projectUUID, scheme) {
   }
 }
 
+async function deleteConcepts (projectUUID, scheme) {
+  try {
+    const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
+    const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}`;
+    const POOLPARTY_DELETE_URL = `${POOLPARTY_Base_URL}/${projectUUID}/deleteConcept`;
+    const response = await axios.get(POOLPARTY_GET_URL, {
+      family: 4,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: authHeader
+      }
+    });
+    let responseData = response.data;
+    if (typeof data === 'string') {
+      responseData = JSON.parse(responseData);
+    }
+    responseData.forEach(async element => {
+      console.log(element.uri);
+      const data = querystring.stringify({
+        concept : element.uri
+      });
+      const response = await axios.post(POOLPARTY_DELETE_URL, data, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: authHeader
+        }
+      });
+      if (response.status !== 200) {
+        throw new Error(`DELETE failed for ${element.uri}: ${response.status}`);
+      }
+      responseLogger.info(`DELETE successful for ${element.uri}, ${element.prefLabel}: ${response.status}`);
+    });
+    return responseData;
+  } catch (error) {
+    logger.error('Error in deleting Concept:', error);
+    throw error;
+  }
+}
 module.exports = {
   fetchRegistry,
   parseRegistry,
   createConceptScheme,
   createConcept,
-  fetchConcepts
+  fetchConcepts,
+  deleteConcepts
 };
