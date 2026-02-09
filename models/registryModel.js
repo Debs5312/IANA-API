@@ -1,4 +1,5 @@
 const axios = require('axios');
+const https = require('https');
 const querystring = require('querystring');
 const { logger, responseLogger } = require('../config/logger');
 const { parseRegistry } = require('../utils/parseRegistry');
@@ -11,7 +12,10 @@ const POOLPARTY_PASSWORD = process.env.POOLPARTY_PASSWORD;
 
 async function fetchRegistry () {
   try {
-    const response = await axios.get(IANA_URL, { family: 4 });
+    const agent = new https.Agent({
+      rejectUnauthorized: false
+    });
+    const response = await axios.get(IANA_URL, { family: 4, httpsAgent: agent });
     logger.info('Fetched IANA registry successfully');
     return parseRegistry(response.data);
   } catch (error) {
