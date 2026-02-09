@@ -1,4 +1,4 @@
-const { fetchRegistry, createConceptScheme } = require('../models/registryModel');
+const { fetchRegistry, fetchRegistryFilterByLanguage, createConcept, fetchConcepts, deleteConcepts } = require('../models/registryModel');
 const { logger } = require('../config/logger');
 
 async function getRegistry (req, res) {
@@ -15,33 +15,73 @@ async function getRegistry (req, res) {
 async function getLanguageRegistry (req, res) {
   logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
   try {
-    const data = await fetchRegistry();
-    const languageData = data
-      .filter(obj => obj.Type === 'language' && obj.Subtag)
-      .map(obj => ({
-        Subtag: obj.Subtag,
-        Description: obj.Description || 'No description available'
-      }));
-    res.json(languageData);
+    const data = await fetchRegistryFilterByLanguage();
+    res.json(data);
   } catch (error) {
     logger.error('Error fetching or parsing language registry:', error);
     res.status(500).json({ error: 'Failed to fetch or parse the language subtag registry' });
   }
 }
 
-async function createConceptSchemeHandler (req, res) {
+// async function createConceptSchemeHandler (req, res) {
+//   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
+//   try {
+//     const { projectUUID, creator } = req.body;
+//     const data = await createConceptScheme(projectUUID, creator);
+//     res.json({ success: true, data });
+//   } catch (error) {
+//     logger.error('Error creating concept scheme:', error);
+//     res.status(500).json({ error: 'Failed to create concept scheme' });
+//   }
+// }
+
+async function createConceptHandler (req, res) {
   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
   try {
-    const data = await createConceptScheme();
+    const { projectUUID, parent } = req.body;
+    const data = await createConcept(projectUUID, parent);
     res.json({ success: true, data });
   } catch (error) {
-    logger.error('Error creating concept scheme:', error);
-    res.status(500).json({ error: 'Failed to create concept scheme' });
+    logger.error('Error creating concept:', error);
+    res.status(500).json({ error: 'Failed to create concept' });
+  }
+}
+
+async function fetchConceptHandler (req, res) {
+  logger.info(`Request received: GET ${req.path} from ${req.ip}`);
+  try {
+    const { projectUUID, scheme } = req.query;
+    const data = await fetchConcepts(projectUUID, scheme);
+    res.json({ success: true, data });
+  } catch (error) {
+    logger.error('Error fetching concept:', error);
+    res.status(500).json({ error: 'Failed to fetch concept' });
+  }
+}
+
+async function deleteConceptHandler (req, res) {
+  logger.info(`Request received: DELETE ${req.path} from ${req.ip}`);
+  try {
+    const { projectUUID, scheme } = req.query;
+    const data = await deleteConcepts(projectUUID, scheme);
+    res.json({ success: true, data });
+  } catch (error) {
+    if (error.message === 'No concepts found to delete') {
+      // Return 404 Not Found if no concepts are present
+      logger.info('No concepts found to delete for the given scheme');
+      res.status(404).json({ error: 'No concepts found to delete' });
+    } else {
+      logger.error('Error deleting concept:', error);
+      res.status(500).json({ error: 'Failed to delete concept' });
+    }
   }
 }
 
 module.exports = {
   getRegistry,
   getLanguageRegistry,
-  createConceptSchemeHandler
+  // createConceptSchemeHandler,
+  createConceptHandler,
+  fetchConceptHandler,
+  deleteConceptHandler
 };
