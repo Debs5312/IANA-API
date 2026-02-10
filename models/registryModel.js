@@ -28,7 +28,7 @@ async function fetchRegistryFilterByLanguage () {
   try {
     const allData = await fetchRegistry();
     const languages = allData
-      .filter(obj => obj.Type === 'language')
+      .filter(obj => obj.Type === 'language' && obj.Deprecated == null)
       .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || '' }))
       .filter(lang => lang.Subtag && lang.Description);
     return languages;
