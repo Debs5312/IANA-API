@@ -23,18 +23,6 @@ async function getLanguageRegistry (req, res) {
   }
 }
 
-// async function createConceptSchemeHandler (req, res) {
-//   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
-//   try {
-//     const { projectUUID, creator } = req.body;
-//     const data = await createConceptScheme(projectUUID, creator);
-//     res.json({ success: true, data });
-//   } catch (error) {
-//     logger.error('Error creating concept scheme:', error);
-//     res.status(500).json({ error: 'Failed to create concept scheme' });
-//   }
-// }
-
 async function createConceptHandler (req, res) {
   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
   try {

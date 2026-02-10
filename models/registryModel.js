@@ -3,6 +3,7 @@ const https = require('https');
 const querystring = require('querystring');
 const { logger, responseLogger } = require('../config/logger');
 const { parseRegistry } = require('../utils/parseRegistry');
+const { level } = require('winston');
 
 const IANA_URL = process.env.IANA_URL;
 const POOLPARTY_Base_URL = process.env.POOLPARTY_URL;
@@ -38,47 +39,6 @@ async function fetchRegistryFilterByLanguage () {
   }
 }
 
-// async function createConceptScheme (projectUUID, creator) {
-//   try {
-//     // Fetch and filter languages directly to avoid self-reference
-//     const allData = await fetchRegistry();
-//     const languages = allData
-//       .filter(obj => obj.Type === 'language')
-//       .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || '' }))
-//       .filter(lang => lang.Subtag && lang.Description); // Ensure required fields
-//     const results = [];
-//     for (const language of languages.slice(0, 5)) {
-//       const title = language.Subtag;
-//       const description = language.Description;
-
-//       const data = querystring.stringify({
-//         title,
-//         description,
-//         creator
-//       });
-
-//       const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-//       const POOLPARTY_URL = `${POOLPARTY_Base_URL}/${projectUUID}/createConceptScheme`;
-//       const response = await axios.post(POOLPARTY_URL, data, {
-//         headers: {
-//           'Content-Type': 'application/x-www-form-urlencoded',
-//           Authorization: authHeader
-//         }
-//       });
-
-//       if (response.status !== 200) {
-//         throw new Error(`POST failed for ${title}: ${response.status}`);
-//       }
-
-//       responseLogger.info(`POST successful for ${title}: ${response.status}`);
-//       results.push(response.data);
-//     }
-//     return results;
-//   } catch (error) {
-//     logger.error('Error in createConceptScheme:', error);
-//     throw error;
-//   }
-// }
 
 async function createConcept (projectUUID, parent) {
   try {
@@ -110,6 +70,7 @@ async function createConcept (projectUUID, parent) {
 
       const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
       const POOLPARTY_URL = `${POOLPARTY_Base_URL}/${projectUUID}/createConcept`;
+      const POOLPARTY_URL_TO_ADD_DESC = `${POOLPARTY_Base_URL}/${projectUUID}/addLiteral`;
       const response = await axios.post(POOLPARTY_URL, data, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -119,6 +80,26 @@ async function createConcept (projectUUID, parent) {
 
       if (response.status !== 200) {
         throw new Error(`POST failed for ${prefLabel}: ${response.status}`);
+      }
+      else{
+        resource = response.data;
+        label = language.Description;
+        property = "skos:altLabel";
+        const data = querystring.stringify({
+          resource,
+          label,
+          property
+        });
+        const new_response = await axios.post(POOLPARTY_URL_TO_ADD_DESC, data, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: authHeader
+          }
+        });
+
+        if(new_response.status != 200){
+          throw new Error(`POST new concept was sucessful for ${prefLabel} but adding description to alternate level failed ${level} : ${response.status}`);
+        }
       }
 
       responseLogger.info(`POST successful for ${prefLabel}: ${response.status}`);
