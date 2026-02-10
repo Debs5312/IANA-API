@@ -68,7 +68,6 @@ async function deleteConceptHandler (req, res) {
 module.exports = {
   getRegistry,
   getLanguageRegistry,
-  // createConceptSchemeHandler,
   createConceptHandler,
   fetchConceptHandler,
   deleteConceptHandler

@@ -14,7 +14,14 @@ function parseRegistry (text) {
       if (colonIndex !== -1) {
         const key = line.substring(0, colonIndex).trim();
         const value = line.substring(colonIndex + 1).trim();
-        current[key] = value;
+        if (key === 'Description') {
+          if (!current[key]) {
+            current[key] = [];
+          }
+          current[key].push(value);
+        } else {
+          current[key] = value;
+        }
       }
     }
   }

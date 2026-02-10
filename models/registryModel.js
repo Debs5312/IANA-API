@@ -3,7 +3,6 @@ const https = require('https');
 const querystring = require('querystring');
 const { logger, responseLogger } = require('../config/logger');
 const { parseRegistry } = require('../utils/parseRegistry');
-const { level } = require('winston');
 
 const IANA_URL = process.env.IANA_URL;
 const POOLPARTY_Base_URL = process.env.POOLPARTY_URL;
@@ -30,8 +29,8 @@ async function fetchRegistryFilterByLanguage () {
     const allData = await fetchRegistry();
     const languages = allData
       .filter(obj => obj.Type === 'language' && obj.Deprecated == null)
-      .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || '' }))
-      .filter(lang => lang.Subtag && lang.Description);
+      .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || [] }))
+      .filter(lang => lang.Subtag && lang.Description.length > 0);
     return languages;
   } catch (error) {
     logger.error('Filter type Language is invalid:', error);
@@ -59,7 +58,7 @@ async function createConcept (projectUUID, parent) {
       logger.info('No new languages to create.');
       return results;
     }
-    for (const language of languagesToCreate.slice(0, 5)) {
+    for (const language of languagesToCreate) {
       const prefLabel = language.Subtag;
       //const description = language.Description;
 
@@ -83,22 +82,23 @@ async function createConcept (projectUUID, parent) {
       }
       else{
         resource = response.data;
-        label = language.Description;
         property = "skos:altLabel";
-        const data = querystring.stringify({
-          resource,
-          label,
-          property
-        });
-        const new_response = await axios.post(POOLPARTY_URL_TO_ADD_DESC, data, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: authHeader
-          }
-        });
+        for (const desc of language.Description) {
+          const data = querystring.stringify({
+            resource,
+            label: desc,
+            property
+          });
+          const new_response = await axios.post(POOLPARTY_URL_TO_ADD_DESC, data, {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              Authorization: authHeader
+            }
+          });
 
-        if(new_response.status != 200){
-          throw new Error(`POST new concept was sucessful for ${prefLabel} but adding description to alternate level failed ${level} : ${response.status}`);
+          if(new_response.status != 200){
+            throw new Error(`POST new concept was successful for ${prefLabel} but adding description '${desc}' to alternate label failed: ${new_response.status}`);
+          }
         }
       }
 
