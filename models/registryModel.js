@@ -39,71 +39,74 @@ async function fetchRegistryFilterByLanguage () {
 }
 
 
+async function addAltLabels(resource, descriptions, authHeader, url, prefLabel, isExisting = false) {
+  for (const desc of descriptions) {
+    const data = querystring.stringify({
+      resource,
+      label: desc,
+      property: "skos:altLabel"
+    });
+    const response = await axios.post(url, data, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: authHeader
+      }
+    });
+    if (response.status !== 200) {
+      const errorMsg = isExisting
+        ? `Adding description '${desc}' to existing concept ${prefLabel} failed: ${response.status}`
+        : `POST new concept was successful for ${prefLabel} but adding description '${desc}' to alternate label failed: ${response.status}`;
+      throw new Error(errorMsg);
+    }
+    responseLogger.info(isExisting ? `Added description '${desc}' to existing concept ${prefLabel}` : `Added description '${desc}' to new concept ${prefLabel}`);
+  }
+}
+
 async function createConcept (projectUUID, parent) {
   try {
     // Fetch and filter languages using the dedicated function
     const languages = await fetchRegistryFilterByLanguage();
-    const existingConcepts = await getTopConcepts(projectUUID, parent);
+    const existingConceptsResponse = await getTopConcepts(projectUUID, parent);
+    const existingConcepts = existingConceptsResponse || [];
     const results = [];
-    let languagesToCreate = languages;
-    if (existingConcepts.length > 0) {
-      // Match prefLabels with language Subtag and skip matching data
-      const existingPrefLabels = existingConcepts.map(concept => concept.prefLabel);
-      languagesToCreate = languages.filter(language => !existingPrefLabels.includes(language.Subtag));
-      logger.info(`Found ${existingConcepts.length} existing concepts. Proceeding with creation for ${languagesToCreate.length} remaining languages.`);
-    } else {
-      logger.info('No existing concepts found. Proceeding with concept creation.');
-    }
-    if (languagesToCreate.length === 0) {
-      logger.info('No new languages to create.');
-      return results;
-    }
-    for (const language of languagesToCreate) {
+    const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
+    const POOLPARTY_URL = `${POOLPARTY_Base_URL}/${projectUUID}/createConcept`;
+    const POOLPARTY_URL_TO_ADD_DESC = `${POOLPARTY_Base_URL}/${projectUUID}/addLiteral`;
+
+    logger.info(`Found ${existingConcepts.length} existing concepts.`);
+
+    for (const language of languages) {
       const prefLabel = language.Subtag;
-      //const description = language.Description;
+      const existingConcept = existingConcepts.find(concept => concept.prefLabel === prefLabel);
 
-      const data = querystring.stringify({
-        prefLabel,
-        parent
-      });
-
-      const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-      const POOLPARTY_URL = `${POOLPARTY_Base_URL}/${projectUUID}/createConcept`;
-      const POOLPARTY_URL_TO_ADD_DESC = `${POOLPARTY_Base_URL}/${projectUUID}/addLiteral`;
-      const response = await axios.post(POOLPARTY_URL, data, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: authHeader
+      if (existingConcept) {
+        // Concept exists, check and add missing descriptions
+        const missingDescriptions = language.Description.filter(desc => !existingConcept.altLabels.includes(desc));
+        if (missingDescriptions.length > 0) {
+          await addAltLabels(existingConcept.uri, missingDescriptions, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, true);
+          results.push(existingConcept.uri);
         }
-      });
-
-      if (response.status !== 200) {
-        throw new Error(`POST failed for ${prefLabel}: ${response.status}`);
-      }
-      else{
-        resource = response.data;
-        property = "skos:altLabel";
-        for (const desc of language.Description) {
-          const data = querystring.stringify({
-            resource,
-            label: desc,
-            property
-          });
-          const new_response = await axios.post(POOLPARTY_URL_TO_ADD_DESC, data, {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              Authorization: authHeader
-            }
-          });
-
-          if(new_response.status != 200){
-            throw new Error(`POST new concept was successful for ${prefLabel} but adding description '${desc}' to alternate label failed: ${new_response.status}`);
+      } else {
+        // Create new concept
+        const data = querystring.stringify({
+          prefLabel,
+          parent
+        });
+        const response = await axios.post(POOLPARTY_URL, data, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: authHeader
           }
+        });
+        if (response.status !== 200) {
+          throw new Error(`POST failed for ${prefLabel}: ${response.status}`);
         }
+        const resource = response.data;
+        // Add all descriptions
+        await addAltLabels(resource, language.Description, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, false);
+        responseLogger.info(`POST successful for ${prefLabel}: ${response.status}`);
+        results.push(resource);
       }
-
-      responseLogger.info(`POST successful for ${prefLabel}: ${response.status}`);
-      results.push(response.data);
     }
     return results;
   } catch (error) {
@@ -115,7 +118,7 @@ async function createConcept (projectUUID, parent) {
 async function getTopConcepts (projectUUID, scheme) {
   try {
     const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-    const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}`;
+    const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}&properties=skos:altLabel`;
 
     const response = await axios.get(POOLPARTY_GET_URL, {
       family: 4,
