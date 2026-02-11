@@ -8,6 +8,4 @@ router.get('/registry/language', getLanguageRegistry);
 router.get('/concepts', fetchConceptHandler);
 router.post('/createConcept', createConceptHandler);
 router.delete('/deleteConcept', deleteConceptHandler);
-
-
 module.exports = router;

@@ -5,10 +5,9 @@ const { logger, responseLogger } = require('../config/logger');
 const { parseRegistry } = require('../utils/parseRegistry');
 
 const IANA_URL = process.env.IANA_URL;
-const POOLPARTY_Base_URL = process.env.POOLPARTY_URL;
+const poolpartyBaseUrl = process.env.POOLPARTY_URL;
 const POOLPARTY_USERNAME = process.env.POOLPARTY_USERNAME;
 const POOLPARTY_PASSWORD = process.env.POOLPARTY_PASSWORD;
-
 
 async function fetchRegistry () {
   try {
@@ -38,13 +37,12 @@ async function fetchRegistryFilterByLanguage () {
   }
 }
 
-
-async function addAltLabels(resource, descriptions, authHeader, url, prefLabel, isExisting = false) {
+async function addAltLabels (resource, descriptions, authHeader, url, prefLabel, isExisting = false) {
   for (const desc of descriptions) {
     const data = querystring.stringify({
       resource,
       label: desc,
-      property: "skos:altLabel"
+      property: 'skos:altLabel'
     });
     const response = await axios.post(url, data, {
       headers: {
@@ -70,8 +68,8 @@ async function createConcept (projectUUID, parent) {
     const existingConcepts = existingConceptsResponse || [];
     const results = [];
     const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-    const POOLPARTY_URL = `${POOLPARTY_Base_URL}/${projectUUID}/createConcept`;
-    const POOLPARTY_URL_TO_ADD_DESC = `${POOLPARTY_Base_URL}/${projectUUID}/addLiteral`;
+    const POOLPARTY_URL = `${poolpartyBaseUrl}/${projectUUID}/createConcept`;
+    const POOLPARTY_URL_TO_ADD_DESC = `${poolpartyBaseUrl}/${projectUUID}/addLiteral`;
 
     logger.info(`Found ${existingConcepts.length} existing concepts.`);
 
@@ -118,7 +116,7 @@ async function createConcept (projectUUID, parent) {
 async function getTopConcepts (projectUUID, scheme) {
   try {
     const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-    const POOLPARTY_GET_URL = `${POOLPARTY_Base_URL}/${projectUUID}/topconcepts?scheme=${scheme}&properties=skos:altLabel`;
+    const POOLPARTY_GET_URL = `${poolpartyBaseUrl}/${projectUUID}/topconcepts?scheme=${scheme}&properties=skos:altLabel`;
 
     const response = await axios.get(POOLPARTY_GET_URL, {
       family: 4,
@@ -152,7 +150,7 @@ async function deleteConcepts (projectUUID, scheme) {
     }
     // Proceed to delete each concept
     const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
-    const POOLPARTY_DELETE_URL = `${POOLPARTY_Base_URL}/${projectUUID}/deleteConcept`;
+    const POOLPARTY_DELETE_URL = `${poolpartyBaseUrl}/${projectUUID}/deleteConcept`;
     for (const element of responseData) {
       const data = querystring.stringify({
         concept: element.uri
