@@ -4,7 +4,7 @@
 [![Express](https://img.shields.io/badge/Express-4.18-blue)](https://expressjs.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight Node.js/Express API server that provides endpoints to fetch and process the IANA Language Subtag Registry. It supports retrieving the full registry, filtering for language subtags, and creating a concept scheme (suitable for integration with semantic tools like PoolParty). The API includes security, logging, and error handling for production-ready use.
+A lightweight Node.js/Express API server that provides endpoints to fetch and process the IANA Language Subtag Registry. It supports retrieving the full registry, filtering for language subtags, and integrating with PoolParty for creating, fetching, and deleting language concepts. The API includes security, logging, and error handling for production-ready use.
 
 ## Features
 
@@ -64,11 +64,13 @@ The server logs requests and errors to the console (via Winston). Logs are also 
 
 All endpoints are prefixed with `/api`. Base URL: `http://localhost:5500/api`.
 
-| Method | Endpoint                  | Description                                      | Response Example |
-|--------|---------------------------|--------------------------------------------------|------------------|
-| GET    | `/registry`              | Fetches the full IANA Language Subtag Registry. | `[{ "Type": "language", "Subtag": "en", "Description": "English" }, ...]` |
-| GET    | `/registry/language`     | Fetches only language subtags with descriptions.| `[{ "Subtag": "en", "Description": "English" }, ...]` |
-| GET    | `/createConceptScheme`   | Creates and returns a concept scheme from the registry. | `{ "success": true, "data": { ... } }` |
+| Method | Endpoint                  | Description                                      | Request Body (if applicable) | Response Example |
+|--------|---------------------------|--------------------------------------------------|------------------------------|------------------|
+| GET    | `/registry`              | Fetches the full IANA Language Subtag Registry. | - | `[{ "Type": "language", "Subtag": "en", "Description": "English" }, ...]` |
+| GET    | `/registry/language`     | Fetches only language subtags with descriptions.| - | `[{ "Subtag": "en", "Description": "English" }, ...]` |
+| POST   | `/createConcept`         | Creates language concepts in PoolParty from the registry. | `{ "projectUUID": "string", "parent": "string" }` | `{ "success": true, "data": ["uri1", "uri2", ...] }` |
+| GET    | `/concepts`              | Fetches existing concepts from PoolParty. | Query params: `projectUUID`, `scheme` | `{ "success": true, "data": [...] }` |
+| DELETE | `/deleteConcept`         | Deletes concepts from PoolParty. | Query params: `projectUUID`, `scheme` | `{ "success": true, "data": [...] }` |
 
 ### Examples (using curl)
 
@@ -79,12 +81,24 @@ All endpoints are prefixed with `/api`. Base URL: `http://localhost:5500/api`.
 
 - Language Subtags:
   ```
-  curl http://localhost:5500/api/language
+  curl http://localhost:5500/api/registry/language
   ```
 
-- Create Concept Scheme:
+- Create Concepts (requires PoolParty credentials in .env):
   ```
-  curl http://localhost:5500/api/createConceptScheme
+  curl -X POST http://localhost:5500/api/createConcept \
+    -H "Content-Type: application/json" \
+    -d '{"projectUUID": "your-project-uuid", "parent": "your-parent-uri"}'
+  ```
+
+- Fetch Concepts:
+  ```
+  curl "http://localhost:5500/api/concepts?projectUUID=your-project-uuid&scheme=your-scheme"
+  ```
+
+- Delete Concepts:
+  ```
+  curl -X DELETE "http://localhost:5500/api/deleteConcept?projectUUID=your-project-uuid&scheme=your-scheme"
   ```
 
 Invalid endpoints return 404: `{ "error": "Endpoint not found" }`. Server errors return 500: `{ "error": "Internal server error" }`.
@@ -95,6 +109,7 @@ Invalid endpoints return 404: `{ "error": "Endpoint not found" }`. Server errors
 iana-api/
 ├── app.js                  # Main Express server setup
 ├── package.json            # Dependencies and scripts
+├── sample-data.txt         # Sample data file (if used)
 ├── config/
 │   └── logger.js           # Winston logger configuration
 ├── controllers/
@@ -103,6 +118,8 @@ iana-api/
 │   └── registryModel.js    # Data fetching and concept scheme creation logic
 ├── routes/
 │   └── registryRoutes.js   # API route definitions
+├── utils/
+│   └── parseRegistry.js    # Utility functions for parsing registry data
 ├── logs/                   # Log files (auto-generated)
 ├── .eslintrc.js            # ESLint configuration
 ├── .gitignore              # Git ignore rules
@@ -113,12 +130,13 @@ iana-api/
 
 - **Runtime**:
   - `express`: Web framework.
-  - `axios`: HTTP client for fetching IANA data.
+  - `axios`: HTTP client for fetching IANA data and interacting with PoolParty.
   - `winston`: Advanced logging.
   - `dotenv`: Environment variables.
   - `helmet`: Security headers.
   - `compression`: Gzip compression.
   - `morgan`: HTTP request logger.
+  - `cors`: Cross-origin resource sharing.
 
 - **Development**:
   - `nodemon`: Auto-restart server.
