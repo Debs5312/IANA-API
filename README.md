@@ -6,6 +6,19 @@
 
 A lightweight Node.js/Express API server that provides endpoints to fetch and process the IANA Language Subtag Registry. It supports retrieving the full registry, filtering for language subtags, and integrating with PoolParty for creating, fetching, and deleting language concepts. The API includes security, logging, and error handling for production-ready use.
 
+## Business Requirement
+OUP business stakeholders require language codes in BITS XML to align with the IANA Language Subtag Registry. The updated data model must support:
+A single language code (e.g., en for English).
+An optional region-qualified code (e.g., en-US for American English).
+Business users must validate these codes against the IANA registry. Currently, concept schemes are created manually in PoolParty, which is inefficient and error-prone. With over 1000 concepts to be created, manual work could take days or weeks.
+
+## Business Expectation
+The expectation is to eliminate manual steps by integrating the IANA registry API with PoolParty. The integration should:
+- -Automatically create concept schemes inside a sample project.
+- -Validate language codes and region-qualified codes against the IANA registry.
+- -Provide a scalable, repeatable solution that reduces human effort and minimizes errors.
+- -this automation will save time, improve accuracy, and allow business users to focus on higher-value tasks.
+
 ## Features
 
 - **Fetch Full Registry**: Retrieve the complete IANA Language Subtag Registry data.
