@@ -64,7 +64,7 @@ npm install
 
 This will install all required dependencies listed in `package.json`.
 
-### 3. Environment Configuration (Optional)
+### 3. Environment Configuration (Mandatory)
 
 Create a `.env` file in the root directory for custom configuration:
 
@@ -74,7 +74,13 @@ cp .env.example .env  # if .env.example exists
 
 # Or create .env manually with:
 PORT=5500
-NODE_ENV=development
+IANA_URL=https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+POOLPARTY_URL=https://atticusdata01.uk.oup.com/PoolParty/api/thesaurus
+POOLPARTY_USERNAME=superadmin
+POOLPARTY_PASSWORD=xxxxxxxxxxxx
+NODE_ENV=production
+SECRET_KEY=KxQ2NalNgVSymB2fqoej
+
 # Add other environment variables as needed
 ```
 
