@@ -3,9 +3,9 @@ const { getRegistry, getLanguageRegistry, createConceptHandler, fetchConceptHand
 
 const router = express.Router();
 
-router.get('/registry', getRegistry);
+// router.get('/registry', getRegistry);
 router.get('/registry/language', getLanguageRegistry);
 router.get('/concepts', fetchConceptHandler);
 router.post('/createConcept', createConceptHandler);
-router.delete('/deleteConcept', deleteConceptHandler);
+// router.delete('/deleteConcept', deleteConceptHandler);
 module.exports = router;
