@@ -1,4 +1,4 @@
-const { fetchRegistry, fetchRegistryFilterByLanguage, createConcept, fetchConcepts, deleteConcepts } = require('../models/registryModel');
+const { fetchRegistry, fetchRegistryFilterByLanguage, createConcept, getTopConcepts, deleteConcepts } = require('../models/registryModel');
 const { logger } = require('../config/logger');
 
 async function getRegistry (req, res) {
@@ -39,7 +39,7 @@ async function fetchConceptHandler (req, res) {
   logger.info(`Request received: GET ${req.path} from ${req.ip}`);
   try {
     const { projectUUID, scheme } = req.query;
-    const data = await fetchConcepts(projectUUID, scheme);
+    const data = await getTopConcepts(projectUUID, scheme);
     res.json({ success: true, data });
   } catch (error) {
     logger.error('Error fetching concept:', error);

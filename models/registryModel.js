@@ -60,6 +60,27 @@ async function addAltLabels (resource, descriptions, authHeader, url, prefLabel,
   }
 }
 
+async function deleteAltLabels (resource, descriptionsTobeDeleted, authHeader, url, prefLabel) {
+  for (const desc of descriptionsTobeDeleted) {
+    const data = querystring.stringify({
+      resource,
+      label: desc,
+      property: 'skos:altLabel'
+    });
+    const response = await axios.post(url, data, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: authHeader
+      }
+    });
+    if (response.status !== 200) {
+      const errorMsg = `Deletion of description '${desc}' to existing concept ${prefLabel} has failed: ${response.status}`;
+      throw new Error(errorMsg);
+    }
+    responseLogger.info(`Deleted description '${desc}' to existing concept ${prefLabel}`);
+  }
+}
+
 async function createConcept (projectUUID, parent) {
   try {
     // Fetch and filter languages using the dedicated function
@@ -70,6 +91,7 @@ async function createConcept (projectUUID, parent) {
     const authHeader = `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
     const POOLPARTY_URL = `${poolpartyBaseUrl}/${projectUUID}/createConcept`;
     const POOLPARTY_URL_TO_ADD_DESC = `${poolpartyBaseUrl}/${projectUUID}/addLiteral`;
+    const POOLPARTY_URL_TO_DELETE_DESC = `${poolpartyBaseUrl}/${projectUUID}/removeLiteral`;
 
     logger.info(`Found ${existingConcepts.length} existing concepts.`);
 
@@ -78,11 +100,21 @@ async function createConcept (projectUUID, parent) {
       const existingConcept = existingConcepts.find(concept => concept.prefLabel === prefLabel);
 
       if (existingConcept) {
-        // Concept exists, check and add missing descriptions
-        const missingDescriptions = language.Description.filter(desc => !existingConcept.altLabels.includes(desc));
-        if (missingDescriptions.length > 0) {
-          await addAltLabels(existingConcept.uri, missingDescriptions, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, true);
+        // Check if at least 1 altLabel in existing concept does NOT exist in language description list
+        const hasExtraAltLabels = existingConcept.altLabels.some(altLabel => !language.Description.includes(altLabel));
+        
+        if (hasExtraAltLabels) {
+          // Condition 1: Remove all existing alt labels and then add all language descriptions
+          await deleteAltLabels(existingConcept.uri, existingConcept.altLabels, authHeader, POOLPARTY_URL_TO_DELETE_DESC, prefLabel);
+          await addAltLabels(existingConcept.uri, language.Description, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, true);
           results.push(existingConcept.uri);
+        } else {
+          // Condition 2: Proceed with existing logic - add missing descriptions only
+          const missingDescriptions = language.Description.filter(desc => !existingConcept.altLabels.includes(desc));
+          if (missingDescriptions.length > 0) {
+            await addAltLabels(existingConcept.uri, missingDescriptions, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, true);
+            results.push(existingConcept.uri);
+          }
         }
       } else {
         // Create new concept
@@ -137,10 +169,6 @@ async function getTopConcepts (projectUUID, scheme) {
   }
 }
 
-async function fetchConcepts (projectUUID, scheme) {
-  return await getTopConcepts(projectUUID, scheme);
-}
-
 async function deleteConcepts (projectUUID, scheme) {
   try {
     const responseData = await getTopConcepts(projectUUID, scheme);
@@ -177,6 +205,6 @@ module.exports = {
   fetchRegistryFilterByLanguage,
   // createConceptScheme,
   createConcept,
-  fetchConcepts,
+  getTopConcepts,
   deleteConcepts
 };
