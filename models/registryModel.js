@@ -74,10 +74,10 @@ async function deleteAltLabels (resource, descriptionsTobeDeleted, authHeader, u
       }
     });
     if (response.status !== 200) {
-      const errorMsg = `Deletion of description '${desc}' to existing concept ${prefLabel} has failed: ${response.status}`;
+      const errorMsg = `Deletion of description '${desc}' from existing concept ${prefLabel} has failed: ${response.status}`;
       throw new Error(errorMsg);
     }
-    responseLogger.info(`Deleted description '${desc}' to existing concept ${prefLabel}`);
+    responseLogger.info(`Deleted description '${desc}' from existing concept ${prefLabel}`);
   }
 }
 
@@ -100,21 +100,22 @@ async function createConcept (projectUUID, parent) {
       const existingConcept = existingConcepts.find(concept => concept.prefLabel === prefLabel);
 
       if (existingConcept) {
-        // Check if at least 1 altLabel in existing concept does NOT exist in language description list
-        const hasExtraAltLabels = existingConcept.altLabels.some(altLabel => !language.Description.includes(altLabel));
+        // Find extra levels: altLabels in existing concept but NOT in language Description
+        const extraAltLabels = existingConcept.altLabels.filter(altLabel => !language.Description.includes(altLabel));
         
-        if (hasExtraAltLabels) {
-          // Condition 1: Remove all existing alt labels and then add all language descriptions
-          await deleteAltLabels(existingConcept.uri, existingConcept.altLabels, authHeader, POOLPARTY_URL_TO_DELETE_DESC, prefLabel);
-          await addAltLabels(existingConcept.uri, language.Description, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, true);
+        // Find new additions: language Description NOT present in existing concept
+        const newDescriptions = language.Description.filter(desc => !existingConcept.altLabels.includes(desc));
+        
+        // Remove extra levels if any
+        if (extraAltLabels.length > 0) {
+          await deleteAltLabels(existingConcept.uri, extraAltLabels, authHeader, POOLPARTY_URL_TO_DELETE_DESC, prefLabel);
           results.push(existingConcept.uri);
-        } else {
-          // Condition 2: Proceed with existing logic - add missing descriptions only
-          const missingDescriptions = language.Description.filter(desc => !existingConcept.altLabels.includes(desc));
-          if (missingDescriptions.length > 0) {
-            await addAltLabels(existingConcept.uri, missingDescriptions, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, true);
-            results.push(existingConcept.uri);
-          }
+        }
+        
+        // Add new descriptions if any
+        if (newDescriptions.length > 0) {
+          await addAltLabels(existingConcept.uri, newDescriptions, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel, true);
+          results.push(existingConcept.uri);
         }
       } else {
         // Create new concept
