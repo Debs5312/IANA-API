@@ -1,11 +1,11 @@
 const express = require('express');
-const { getRegistry, getLanguageRegistry, createConceptHandler, fetchConceptHandler, deleteConceptHandler } = require('../controllers/registryController');
+const { getRegistry, getLanguageRegistry, upsertConceptHandler, fetchConceptHandler, deleteConceptHandler } = require('../controllers/registryController');
 
 const router = express.Router();
 
 // router.get('/registry', getRegistry);
 router.get('/registry/language', getLanguageRegistry);
 router.get('/concepts', fetchConceptHandler);
-router.post('/upsertConcept', createConceptHandler);
+router.post('/upsertConcept', upsertConceptHandler);
 // router.delete('/deleteConcept', deleteConceptHandler);
 module.exports = router;

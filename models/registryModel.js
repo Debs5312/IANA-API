@@ -37,6 +37,20 @@ async function fetchRegistryFilterByLanguage () {
   }
 }
 
+async function fetchDeprecatedLanguages () {
+  try {
+    const allData = await fetchRegistry();
+    const deprecatedLanguages = allData
+      .filter(obj => obj.Type === 'language' && obj.Deprecated != null)
+      .map(obj => ({ Subtag: obj.Subtag, Description: obj.Description || [], Deprecated: obj.Deprecated }))
+      .filter(lang => lang.Subtag);
+    return deprecatedLanguages;
+  } catch (error) {
+    logger.error('Error fetching deprecated languages:', error);
+    throw error;
+  }
+}
+
 async function addAltLabels (resource, descriptions, authHeader, url, prefLabel, isExisting = false) {
   for (const desc of descriptions) {
     const data = querystring.stringify({
@@ -60,6 +74,25 @@ async function addAltLabels (resource, descriptions, authHeader, url, prefLabel,
   }
 }
 
+async function addDescriptionForDeprecatedConcepts (resource, authHeader, url, prefLabel) {
+  const data = querystring.stringify({
+    resource,
+    label: "Deprecated",
+    property: 'skos:definition'
+  });
+  const response = await axios.post(url, data, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: authHeader
+    }
+  });
+  if (response.status !== 200) {
+    const errorMsg = `Marked as Deprecated for existing concept ${prefLabel} failed: ${response.status}`
+    throw new Error(errorMsg);
+  }
+  responseLogger.info(`Marked as Deprecated for existing concept ${prefLabel}`);
+}
+
 async function deleteAltLabels (resource, descriptionsTobeDeleted, authHeader, url, prefLabel) {
   for (const desc of descriptionsTobeDeleted) {
     const data = querystring.stringify({
@@ -81,7 +114,7 @@ async function deleteAltLabels (resource, descriptionsTobeDeleted, authHeader, u
   }
 }
 
-async function createConcept (projectUUID, parent) {
+async function upsertConcept (projectUUID, parent) {
   try {
     // Fetch and filter languages using the dedicated function
     const languages = await fetchRegistryFilterByLanguage();
@@ -139,6 +172,22 @@ async function createConcept (projectUUID, parent) {
         results.push(resource);
       }
     }
+
+    // Handle deprecated languages - mark existing concepts as deprecated
+    const deprecatedLanguages = await fetchDeprecatedLanguages();
+    logger.info(`Found ${deprecatedLanguages.length} deprecated languages.`);
+
+    for (const deprecatedLang of deprecatedLanguages) {
+      const prefLabel = deprecatedLang.Subtag;
+      const existingConcept = existingConcepts.find(concept => concept.prefLabel === prefLabel);
+
+      if (existingConcept) {
+        // Call addDescriptionForDeprecatedConcepts for existing deprecated concepts
+        await addDescriptionForDeprecatedConcepts(existingConcept.uri, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel);
+        results.push(existingConcept.uri);
+      }
+    }
+
     return results;
   } catch (error) {
     logger.error('Error in createConcept:', error);
@@ -205,7 +254,7 @@ module.exports = {
   fetchRegistry,
   fetchRegistryFilterByLanguage,
   // createConceptScheme,
-  createConcept,
+  upsertConcept,
   getTopConcepts,
   deleteConcepts
 };

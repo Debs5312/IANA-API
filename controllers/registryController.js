@@ -1,4 +1,4 @@
-const { fetchRegistry, fetchRegistryFilterByLanguage, createConcept, getTopConcepts, deleteConcepts } = require('../models/registryModel');
+const { fetchRegistry, fetchRegistryFilterByLanguage, upsertConcept, getTopConcepts, deleteConcepts } = require('../models/registryModel');
 const { logger } = require('../config/logger');
 
 async function getRegistry (req, res) {
@@ -23,15 +23,15 @@ async function getLanguageRegistry (req, res) {
   }
 }
 
-async function createConceptHandler (req, res) {
+async function upsertConceptHandler (req, res) {
   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
   try {
     const { projectUUID, parent } = req.body;
-    const data = await createConcept(projectUUID, parent);
+    const data = await upsertConcept(projectUUID, parent);
     res.json({ success: true, data });
   } catch (error) {
-    logger.error('Error creating concept:', error);
-    res.status(500).json({ error: 'Failed to create concept' });
+    logger.error('Error updating or creating concept:', error);
+    res.status(500).json({ error: 'Failed to create or update concept' });
   }
 }
 
@@ -68,7 +68,7 @@ async function deleteConceptHandler (req, res) {
 module.exports = {
   getRegistry,
   getLanguageRegistry,
-  createConceptHandler,
+  upsertConceptHandler,
   fetchConceptHandler,
   deleteConceptHandler
 };
