@@ -37,6 +37,33 @@ async function fetchRegistryFilterByLanguage () {
   }
 }
 
+function isSubtagDescriptionDuplicate(subtag, description) {
+  const lowerSubtag = subtag.toLowerCase();
+  const match = description.some(desc => {
+    const trimmedDesc = (desc || '').trim();
+    const isMatch = trimmedDesc.toLowerCase() === lowerSubtag;
+    return isMatch;
+  });
+  return match;
+}
+
+async function findSubtagDescriptionDuplicates(languages) {
+  try {
+    const duplicates = languages.filter(lang => isSubtagDescriptionDuplicate(lang.Subtag, lang.Description));
+    const now = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const filePath = `data/subtag-description-duplicates-${now}.json`;
+    const fs = require('fs').promises;
+    await fs.mkdir('data', { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(duplicates, null, 2));
+    
+    logger.info(`Saved ${duplicates.length} subtag-description duplicate entries to ${filePath}`);
+    return duplicates;
+  } catch (error) {
+    logger.error('Error finding/saving subtag-description duplicates:', error);
+    throw error;
+  }
+}
+
 async function fetchDeprecatedLanguages () {
   try {
     const allData = await fetchRegistry();
@@ -118,6 +145,18 @@ async function upsertConcept (projectUUID, parent) {
   try {
     // Fetch and filter languages using the dedicated function
     const languages = await fetchRegistryFilterByLanguage();
+    
+    // Find and save subtag-description duplicates, then filter them out
+    const duplicates = await findSubtagDescriptionDuplicates(languages);
+    const finalLanguages = languages.filter(lang => !duplicates.some(d => d.Subtag === lang.Subtag));
+    
+    logger.info(`Filtered out ${duplicates.length} subtag-description duplicate entries. Processing ${finalLanguages.length} languages.`);
+    
+    if (finalLanguages.length === 0) {
+      logger.info('All languages are found with duplicate description');
+      return { message: 'All languages found with duplicate descriptions', processed: 0, duplicatesCount: duplicates.length };
+    }
+    
     const existingConceptsResponse = await getTopConcepts(projectUUID, parent);
     const existingConcepts = existingConceptsResponse || [];
     const results = [];
@@ -128,20 +167,24 @@ async function upsertConcept (projectUUID, parent) {
 
     logger.info(`Found ${existingConcepts.length} existing concepts.`);
 
-    for (const language of languages) {
+    for (const language of finalLanguages) {
       const prefLabel = language.Subtag;
-      const existingConcept = existingConcepts.find(concept => concept.prefLabel === prefLabel);
+        const existingConcept = existingConcepts.find(concept => concept.prefLabel === prefLabel);
 
       if (existingConcept) {
+        const altLabels = existingConcept.altLabels || [];
         // Find extra levels: altLabels in existing concept but NOT in language Description
-        const extraAltLabels = existingConcept.altLabels.filter(altLabel => !language.Description.includes(altLabel));
+        const extraAltLabels = altLabels.filter(altLabel => !language.Description.includes(altLabel));
+        
+        // Skip undefined/null/empty altLabels
+        const validExtraAltLabels = extraAltLabels.filter(altLabel => altLabel != null && altLabel !== '' && altLabel.trim() !== '');
         
         // Find new additions: language Description NOT present in existing concept
-        const newDescriptions = language.Description.filter(desc => !existingConcept.altLabels.includes(desc));
+        const newDescriptions = language.Description.filter(desc => !altLabels.includes(desc));
         
         // Remove extra levels if any
-        if (extraAltLabels.length > 0) {
-          await deleteAltLabels(existingConcept.uri, extraAltLabels, authHeader, POOLPARTY_URL_TO_DELETE_DESC, prefLabel);
+        if (validExtraAltLabels.length > 0) {
+          await deleteAltLabels(existingConcept.uri, validExtraAltLabels, authHeader, POOLPARTY_URL_TO_DELETE_DESC, prefLabel);
           results.push(existingConcept.uri);
         }
         
@@ -182,6 +225,7 @@ async function upsertConcept (projectUUID, parent) {
       const existingConcept = existingConcepts.find(concept => concept.prefLabel === prefLabel);
 
       if (existingConcept) {
+        const altLabels = existingConcept.altLabels || [];  // Ensure safety for potential future use
         // Call addDescriptionForDeprecatedConcepts for existing deprecated concepts
         await addDescriptionForDeprecatedConcepts(existingConcept.uri, authHeader, POOLPARTY_URL_TO_ADD_DESC, prefLabel);
         results.push(existingConcept.uri);
@@ -190,7 +234,7 @@ async function upsertConcept (projectUUID, parent) {
 
     return results;
   } catch (error) {
-    logger.error('Error in createConcept:', error);
+    logger.error('Error in upsertConcept:', error);
     throw error;
   }
 }
@@ -253,7 +297,6 @@ async function deleteConcepts (projectUUID, scheme) {
 module.exports = {
   fetchRegistry,
   fetchRegistryFilterByLanguage,
-  // createConceptScheme,
   upsertConcept,
   getTopConcepts,
   deleteConcepts

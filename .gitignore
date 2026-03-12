@@ -62,6 +62,8 @@ typings/
 .env.test
 .env.local
 
+# data logs
+data/
 # Application logs
 logs/
 logs/*.log

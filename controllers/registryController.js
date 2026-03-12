@@ -30,7 +30,7 @@ async function upsertConceptHandler (req, res) {
     const data = await upsertConcept(projectUUID, parent);
     res.json({ success: true, data });
   } catch (error) {
-    logger.error('Error updating or creating concept:', error);
+    logger.error(`Error updating or creating concept: + ${error.message}`);
     res.status(500).json({ error: 'Failed to create or update concept' });
   }
 }
