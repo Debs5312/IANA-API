@@ -1,5 +1,5 @@
 const express = require('express');
-const { getRegistry, getLanguageRegistry, upsertConceptHandler, fetchConceptHandler, deleteConceptHandler } = require('../controllers/registryController');
+const { getLanguageRegistry, upsertConceptHandler, fetchConceptHandler } = require('../controllers/registryController');
 
 const router = express.Router();
 
