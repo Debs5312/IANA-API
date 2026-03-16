@@ -70,6 +70,8 @@ logs/*.log
 info.log
 error.log
 
+sample-data.txt
+
 # parcel-bundler cache
 .cache
 .parcel-cache
