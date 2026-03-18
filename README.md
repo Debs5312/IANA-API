@@ -230,11 +230,6 @@ All endpoints are prefixed with `/api`. Base URL: `http://localhost:5500/api`.
   curl "http://localhost:5500/api/concepts?projectUUID=your-project-uuid&scheme=your-scheme"
   ```
 
-- Delete Concepts:
-  ```
-  curl -X DELETE "http://localhost:5500/api/deleteConcept?projectUUID=your-project-uuid&scheme=your-scheme"
-  ```
-
 Invalid endpoints return 404: `{ "error": "Endpoint not found" }`. Server errors return 500: `{ "error": "Internal server error" }`.
 
 ## Project Structure
