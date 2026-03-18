@@ -92,7 +92,6 @@ POOLPARTY_URL=https://atticusdata01.uk.oup.com/PoolParty/api/thesaurus
 POOLPARTY_USERNAME=superadmin
 POOLPARTY_PASSWORD=xxxxxxxxxxxx
 NODE_ENV=production
-SECRET_KEY=KxQ2NalNgVSymB2fqoej
 
 # Add other environment variables as needed
 ```
@@ -161,11 +160,16 @@ You should receive JSON responses with registry data.
    npm install
    ```
 
-3. Create a `.env` file in the root (optional, for custom config):
+3. Create `.env` (required for full features/PoolParty):
    ```
    PORT=5500
-   # Add other env vars as needed (e.g., for external API keys if extended)
+   IANA_URL=https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+   POOLPARTY_URL=https://your-poolparty-url/PoolParty/api/thesaurus
+   POOLPARTY_USERNAME=your_username
+   POOLPARTY_PASSWORD=your_password
+   # Optional: NODE_ENV=production, SECRET_KEY=...
    ```
+   Note: No `.env.example` provided.
 
 4. Run ESLint to check code style (optional):
    ```
@@ -198,11 +202,9 @@ All endpoints are prefixed with `/api`. Base URL: `http://localhost:5500/api`.
 
 | Method | Endpoint                  | Description                                      | Request Body (if applicable) | Response Example |
 |--------|---------------------------|--------------------------------------------------|------------------------------|------------------|
-| GET    | `/registry`              | Fetches the full IANA Language Subtag Registry. | - | `[{ "Type": "language", "Subtag": "en", "Description": "English" }, ...]` |
-| GET    | `/registry/language`     | Fetches only language subtags with descriptions.| - | `[{ "Subtag": "en", "Description": "English" }, ...]` |
-| POST   | `/createConcept`         | Creates language concepts in PoolParty from the registry. | `{ "projectUUID": "string", "parent": "string" }` | `{ "success": true, "data": ["uri1", "uri2", ...] }` |
-| GET    | `/concepts`              | Fetches existing concepts from PoolParty. | Query params: `projectUUID`, `scheme` | `{ "success": true, "data": [...] }` |
-| DELETE | `/deleteConcept`         | Deletes concepts from PoolParty. | Query params: `projectUUID`, `scheme` | `{ "success": true, "data": [...] }` |
+| GET    | `/registry/language`     | Fetches non-deprecated language subtags w/ descriptions. | - | `[{ "Subtag": "en", "Description": ["English"] }, ...]` |
+| POST   | `/upsertConcept`         | Upserts concepts in PoolParty (create new/update altLabels, handle duplicates/deprecated). | Body: `{ "projectUUID": "string", "parent": "string" }` | `[ "resource_uri1", "resource_uri2", ... ]` |
+| GET    | `/concepts`              | Fetches top concepts from PoolParty. | Query: `?projectUUID=...&scheme=...` | `{ "success": true, "data": [ { "uri": "...", "prefLabel": "...", "altLabels": [...] }, ... ] }` |
 
 ### Examples (using curl)
 
@@ -216,9 +218,9 @@ All endpoints are prefixed with `/api`. Base URL: `http://localhost:5500/api`.
   curl http://localhost:5500/api/registry/language
   ```
 
-- Create Concepts (requires PoolParty credentials in .env):
+- Upsert Concepts (handles create/update/duplicate/deprecated; PoolParty env req'd):
   ```
-  curl -X POST http://localhost:5500/api/createConcept \
+  curl -X POST http://localhost:5500/api/upsertConcept \
     -H "Content-Type: application/json" \
     -d '{"projectUUID": "your-project-uuid", "parent": "your-parent-uri"}'
   ```
@@ -238,25 +240,26 @@ Invalid endpoints return 404: `{ "error": "Endpoint not found" }`. Server errors
 ## Project Structure
 
 ```
-iana-api/
-├── app.js                  # Main Express server setup
-├── package.json            # Dependencies and scripts
-├── sample-data.txt         # Sample data file (if used)
+IANA-API/
+├── app.js                          # Main Express server setup (helmet, compression, logging, error handling)
+├── package.json                    # Dependencies and scripts
+├── README.md                       # Project documentation
+├── .eslintrc.js                    # ESLint configuration (standard)
+├── .gitignore                      # Git ignore rules
 ├── config/
-│   └── logger.js           # Winston logger configuration
+│   └── logger.js                   # Winston + Morgan logging config
 ├── controllers/
-│   └── registryController.js # Route handlers with logging and error handling
+│   └── registryController.js       # API handlers (logging, error handling)
+├── data/                           # Auto-generated: subtag-description-duplicates-*.json, error_tags_*/error.json
+├── logs/                           # Auto-generated: error.log, info.log, response.log
 ├── models/
-│   └── registryModel.js    # Data fetching and concept scheme creation logic
+│   └── registryModel.js            # IANA fetch/parse, PoolParty CRUD (upsert, fetch top concepts, delete)
 ├── routes/
-│   └── registryRoutes.js   # API route definitions
-├── utils/
-│   └── parseRegistry.js    # Utility functions for parsing registry data
-├── logs/                   # Log files (auto-generated)
-├── .eslintrc.js            # ESLint configuration
-├── .gitignore              # Git ignore rules
-└── README.md               # This file
+│   └── registryRoutes.js           # /api routes (language, concepts, upsertConcept; some commented)
+└── utils/
+    └── parseRegistry.js            # Parses IANA registry text (%% sections to objects)
 ```
+
 
 ## Dependencies
 

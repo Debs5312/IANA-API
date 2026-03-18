@@ -160,7 +160,6 @@ async function computeDuplicateDetails (language) {
     otherDescs: _ensureArray(otherDescs),
     altLevel
   };
-
 }
 
 async function fetchDeprecatedLanguages () {
