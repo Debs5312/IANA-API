@@ -281,10 +281,6 @@ Requests are logged with method, path, and IP. Errors are captured globally. Cus
 
 Ensure code passes `npm run lint`. Follow ESLint rules.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. (Create a `LICENSE` file if needed.)
-
 ## AWS Hosting
 
 This API can be hosted on AWS using various services. Here are recommended approaches:
