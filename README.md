@@ -208,11 +208,6 @@ All endpoints are prefixed with `/api`. Base URL: `http://localhost:5500/api`.
 
 ### Examples (using curl)
 
-- Full Registry:
-  ```
-  curl http://localhost:5500/api/registry
-  ```
-
 - Language Subtags:
   ```
   curl http://localhost:5500/api/registry/language
