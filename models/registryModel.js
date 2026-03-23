@@ -10,15 +10,33 @@ const poolpartyBaseUrl = process.env.POOLPARTY_URL;
 const POOLPARTY_USERNAME = process.env.POOLPARTY_USERNAME;
 const POOLPARTY_PASSWORD = process.env.POOLPARTY_PASSWORD;
 
-// Private helper functions
+/**
+ * Generates Basic Auth header for PoolParty API requests using env credentials.
+ * @returns {Promise<string>} Base64 encoded Authorization header
+ */
 async function _getAuthHeader () {
   return `Basic ${Buffer.from(`${POOLPARTY_USERNAME}:${POOLPARTY_PASSWORD}`).toString('base64')}`;
 }
 
+/**
+ * Constructs full PoolParty API URL for project operations.
+ * @param {string} projectUUID - PoolParty project identifier
+ * @param {string} endpoint - API endpoint path
+ * @returns {string} Complete PoolParty URL
+ */
 function _buildPoolPartyUrl (projectUUID, endpoint) {
   return `${poolpartyBaseUrl}/${projectUUID}/${endpoint}`;
 }
 
+/**
+ * Makes POST request to PoolParty API with error logging to data/ directory.
+ * @param {string} url - PoolParty API endpoint
+ * @param {Object} data - Form data payload
+ * @param {string} authHeader - Authorization header
+ * @param {Object} [languageDetails] - Context for error logging
+ * @returns {Promise<Object|null>} Response data or null on error
+ * @private
+ */
 async function _postToPoolParty (url, data, authHeader, languageDetails = null) {
   const response = await axios.post(url, querystring.stringify(data), {
     headers: {
@@ -45,6 +63,16 @@ async function _postToPoolParty (url, data, authHeader, languageDetails = null) 
   return response.data;
 }
 
+/**
+ * Creates new concept in PoolParty project under parent.
+ * @param {string} projectUUID - PoolParty project ID
+ * @param {string} prefLabel - Concept preferred label (subtag)
+ * @param {string} parent - Parent concept URI/ID
+ * @param {string} authHeader - Auth header
+ * @param {Object} [languageDetails] - Error context
+ * @returns {Promise<string|null>} Created resource URI or null
+ * @private
+ */
 async function _createConcept (projectUUID, prefLabel, parent, authHeader, languageDetails = null) {
   const url = _buildPoolPartyUrl(projectUUID, 'createConcept');
   const data = { prefLabel, parent };
@@ -57,6 +85,18 @@ async function _createConcept (projectUUID, prefLabel, parent, authHeader, langu
   return resource;
 }
 
+/**
+ * Adds multiple skos:altLabel literals to existing/new concept.
+ * @param {string} resource - Concept URI
+ * @param {string[]} descriptions - Alt labels to add
+ * @param {string} projectUUID - Project ID
+ * @param {string} prefLabel - For logging
+ * @param {string} authHeader - Auth header
+ * @param {boolean} [isExisting=false] - Existing vs new concept
+ * @param {Object} [languageDetails] - Error context
+ * @returns {Promise<void>}
+ * @private
+ */
 async function _addAltLabels (resource, descriptions, projectUUID, prefLabel, authHeader, isExisting = false, languageDetails = null) {
   for (const desc of descriptions) {
     const url = _buildPoolPartyUrl(projectUUID, 'addLiteral');
@@ -66,6 +106,16 @@ async function _addAltLabels (resource, descriptions, projectUUID, prefLabel, au
   }
 }
 
+/**
+ * Removes specific skos:altLabel literals from existing concept.
+ * @param {string} resource - Concept URI
+ * @param {string[]} descriptionsTobeDeleted - Alt labels to remove
+ * @param {string} projectUUID - Project ID
+ * @param {string} prefLabel - For logging
+ * @param {string} authHeader - Auth header
+ * @returns {Promise<void>}
+ * @private
+ */
 async function _deleteAltLabels (resource, descriptionsTobeDeleted, projectUUID, prefLabel, authHeader) {
   for (const desc of descriptionsTobeDeleted) {
     const url = _buildPoolPartyUrl(projectUUID, 'removeLiteral');
@@ -79,6 +129,15 @@ async function _deleteAltLabels (resource, descriptionsTobeDeleted, projectUUID,
   }
 }
 
+/**
+ * Adds 'Deprecated' skos:definition to mark legacy language concept.
+ * @param {string} resource - Concept URI
+ * @param {string} projectUUID - Project ID
+ * @param {string} prefLabel - For logging
+ * @param {string} authHeader - Auth header
+ * @returns {Promise<void>}
+ * @private
+ */
 async function _addDeprecatedDefinition (resource, projectUUID, prefLabel, authHeader) {
   const url = _buildPoolPartyUrl(projectUUID, 'addLiteral');
   const data = {
@@ -90,10 +149,20 @@ async function _addDeprecatedDefinition (resource, projectUUID, prefLabel, authH
   responseLogger.info(`Marked as Deprecated for existing concept ${prefLabel}`);
 }
 
+/**
+ * Ensures value is always an array (wraps non-arrays).
+ * @param {*} value - Input value
+ * @returns {Array} Array version of value
+ * @private
+ */
 function _ensureArray (value) {
   return Array.isArray(value) ? value : [];
 }
 
+/**
+ * Fetches raw IANA language subtag registry from configured URL.
+ * @returns {Promise<Array>} Parsed registry data
+ */
 async function fetchRegistry () {
   try {
     const agent = new https.Agent({
@@ -108,6 +177,10 @@ async function fetchRegistry () {
   }
 }
 
+/**
+ * Filters IANA registry to non-deprecated language subtags with descriptions.
+ * @returns {Promise<Array>} Language subtags [{Subtag, Description}]
+ */
 async function fetchRegistryFilterByLanguage () {
   try {
     const allData = await fetchRegistry();
@@ -122,6 +195,14 @@ async function fetchRegistryFilterByLanguage () {
   }
 }
 
+/**
+ * Checks if language subtag matches any description exactly (case-insensitive).
+ * Used to detect self-referential duplicates.
+ * @param {string} subtag - Language subtag
+ * @param {string[]} description - Array of descriptions
+ * @returns {boolean} True if subtag matches any trimmed description
+ * @private
+ */
 function isSubtagDescriptionDuplicate (subtag, description) {
   const lowerSubtag = subtag.toLowerCase();
   const match = description.some(desc => {
@@ -132,6 +213,11 @@ function isSubtagDescriptionDuplicate (subtag, description) {
   return match;
 }
 
+/**
+ * Identifies and saves languages where subtag duplicates in descriptions to data/.
+ * @param {Array} languages - Language array from fetchRegistryFilterByLanguage
+ * @returns {Promise<Array>} Duplicate language entries
+ */
 async function findSubtagDescriptionDuplicates (languages) {
   try {
     const duplicates = languages.filter(lang => isSubtagDescriptionDuplicate(lang.Subtag, lang.Description));
@@ -149,6 +235,11 @@ async function findSubtagDescriptionDuplicates (languages) {
   }
 }
 
+/**
+ * Computes altLabels for duplicate cases: removes self-matches, computes altLevel.
+ * @param {Object} language - {Subtag, Description[]}
+ * @returns {Promise<Object>} {selfMatchingDescs[], otherDescs[], altLevel}
+ */
 async function computeDuplicateDetails (language) {
   const { Subtag, Description = [] } = language;
   const lowerSubtag = Subtag.toLowerCase();
@@ -162,6 +253,10 @@ async function computeDuplicateDetails (language) {
   };
 }
 
+/**
+ * Filters IANA registry to deprecated language subtags.
+ * @returns {Promise<Array>} Deprecated languages [{Subtag, Description[], Deprecated}]
+ */
 async function fetchDeprecatedLanguages () {
   try {
     const allData = await fetchRegistry();
@@ -176,6 +271,13 @@ async function fetchDeprecatedLanguages () {
   }
 }
 
+/**
+ * Main orchestration: Syncs IANA languages to PoolParty concepts (upsert).
+ * Handles duplicates, deprecated marking, altLabel sync.
+ * @param {string} projectUUID - PoolParty project ID
+ * @param {string} parent - parent concept scheme uri
+ * @returns {Promise<Array>} Array of updated/created concept URIs
+ */
 async function upsertConcept (projectUUID, parent) {
   try {
     // Fetch and filter languages using the dedicated function
@@ -308,6 +410,12 @@ async function upsertConcept (projectUUID, parent) {
   }
 }
 
+/**
+ * Fetches top concepts from PoolParty project/scheme with altLabels.
+ * @param {string} projectUUID - PoolParty project ID
+ * @param {string} scheme - Thesaurus/concept scheme
+ * @returns {Promise<Array>} [{prefLabel, uri, altLabels[]}]
+ */
 async function getTopConcepts (projectUUID, scheme) {
   try {
     const authHeader = await _getAuthHeader();
@@ -337,6 +445,14 @@ async function getTopConcepts (projectUUID, scheme) {
   }
 }
 
+/**
+ * Deletes all top concepts for project/scheme from PoolParty.
+ * Throws if none exist (404 handling).
+ * @param {string} projectUUID - PoolParty project ID
+ * @param {string} scheme - Concept scheme
+ * @returns {Promise<Array>} Deleted concepts metadata
+ * @throws {Error} "No concepts found to delete"
+ */
 async function deleteConcepts (projectUUID, scheme) {
   try {
     const responseData = await getTopConcepts(projectUUID, scheme);

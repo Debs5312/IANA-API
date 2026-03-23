@@ -1,6 +1,11 @@
 const { fetchRegistry, fetchRegistryFilterByLanguage, upsertConcept, getTopConcepts, deleteConcepts } = require('../models/registryModel');
 const { logger } = require('../config/logger');
 
+/**
+ * Fetches the complete IANA language subtag registry data.
+ * @route GET /registry
+ * @returns {Promise<void>} JSON response with registry data or 500 error
+ */
 async function getRegistry (req, res) {
   logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
   try {
@@ -12,6 +17,11 @@ async function getRegistry (req, res) {
   }
 }
 
+/**
+ * Fetches filtered IANA language subtag registry (language type only, non-deprecated).
+ * @route GET /registry/language
+ * @returns {Promise<void>} JSON response with language data or 500 error
+ */
 async function getLanguageRegistry (req, res) {
   logger.info(`Request received: ${req.method} ${req.path} from ${req.ip}`);
   try {
@@ -23,6 +33,13 @@ async function getLanguageRegistry (req, res) {
   }
 }
 
+/**
+ * Handles concept upsert/create operation for language subtags in PoolParty.
+ * Processes languages, handles duplicates/deprecated, syncs altLabels.
+ * @route POST /upsertConcept
+ * @param {Object} req.body - { projectUUID, parent }
+ * @returns {Promise<void>} JSON { success, data } or 500 error
+ */
 async function upsertConceptHandler (req, res) {
   logger.info(`Request received: POST ${req.path} from ${req.ip}`);
   try {
@@ -35,6 +52,13 @@ async function upsertConceptHandler (req, res) {
   }
 }
 
+/**
+ * Fetches top concepts from PoolParty for given project and scheme.
+ * @route GET /concepts
+ * @query {string} projectUUID - PoolParty project ID
+ * @query {string} scheme - Concept scheme identifier
+ * @returns {Promise<void>} JSON { success, data } or 500 error
+ */
 async function fetchConceptHandler (req, res) {
   logger.info(`Request received: GET ${req.path} from ${req.ip}`);
   try {
@@ -47,6 +71,14 @@ async function fetchConceptHandler (req, res) {
   }
 }
 
+/**
+ * Deletes all top concepts for given project and scheme from PoolParty.
+ * Returns 404 if no concepts found.
+ * @route DELETE /deleteConcept
+ * @query {string} projectUUID - PoolParty project ID
+ * @query {string} scheme - Concept scheme identifier
+ * @returns {Promise<void>} JSON { success, data } or 404/500 error
+ */
 async function deleteConceptHandler (req, res) {
   logger.info(`Request received: DELETE ${req.path} from ${req.ip}`);
   try {
